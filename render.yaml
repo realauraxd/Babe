@@ -1,7 +1,55 @@
 services:
-  - type: worker
-    name: vishalmusic-bot
-    env: python
-    plan: free
-    buildCommand: pip3 install -r requirements.txt
-    startCommand: python3 -m VISHALMUSIC
+  - type: web
+    name: vishal-music-bot
+    runtime: python311
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "python main.py"
+    envVars:
+      - key: PYTHONUNBUFFERED
+        value: "1"
+      - key: API_ID
+        scope: shared
+      - key: API_HASH
+        scope: shared
+      - key: BOT_TOKEN
+        scope: shared
+      - key: STRING_SESSION
+        scope: shared
+      - key: MONGO_DB_URI
+        scope: shared
+      - key: OWNER_ID
+        scope: shared
+      - key: COOKIE_URL
+        scope: shared
+      - key: API_URL
+        scope: shared
+      - key: API_KEY
+        scope: shared
+      - key: DEEP_API
+        scope: shared
+      - key: OWNER_USERNAME
+        scope: shared
+      - key: BOT_USERNAME
+        scope: shared
+      - key: BOT_NAME
+        scope: shared
+      - key: ASSUSERNAME
+        scope: shared
+      - key: LOGGER_ID
+        scope: shared
+      - key: SUPPORT_CHANNEL
+        scope: shared
+      - key: SUPPORT_CHAT
+        scope: shared
+      - key: DURATION_LIMIT
+        scope: shared
+      - key: SONG_DOWNLOAD_DURATION
+        scope: shared
+      - key: SONG_DOWNLOAD_DURATION_LIMIT
+        scope: shared
+      - key: TG_AUDIO_FILESIZE_LIMIT
+        scope: shared
+      - key: TG_VIDEO_FILESIZE_LIMIT
+        scope: shared
+      - key: PLAYLIST_FETCH_LIMIT
+        scope: shared

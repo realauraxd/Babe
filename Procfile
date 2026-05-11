@@ -1,1 +1,1 @@
-worker: python3 -m VISHALMUSIC
+worker: python main.py
