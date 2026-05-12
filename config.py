@@ -11,11 +11,11 @@ API_ID = int(getenv("API_ID", 26493077))
 API_HASH = getenv("API_HASH", "6586f0276c7748e54684719bdd247d90")
 BOT_TOKEN = getenv("BOT_TOKEN")
 
-OWNER_ID = int(getenv("OWNER_ID", 7044783841))
-OWNER_USERNAME = getenv("OWNER_USERNAME", "DENVER_MODZ_OWNER1")
+OWNER_ID = int(getenv("OWNER_ID", 8262565708))
+OWNER_USERNAME = getenv("OWNER_USERNAME", "Its_MeVishalll")
 BOT_USERNAME = getenv("BOT_USERNAME", "Shrutimusic_bot")
-BOT_NAME = getenv("BOT_NAME", "𝐒ʜʀᴜᴛɪ ✘ 𝙼ᴜsɪᴄ˼ ♪")
-ASSUSERNAME = getenv("ASSUSERNAME", "𝐒ʜʀᴜᴛɪ ✘ ᴀꜱꜱɪꜱᴛᴀɴᴛ˼")
+BOT_NAME = getenv("BOT_NAME", " ✘ 𝙼ᴜsɪᴄ˼ ♪")
+ASSUSERNAME = getenv("ASSUSERNAME", " ✘ ᴀꜱꜱɪꜱᴛᴀɴᴛ˼")
 
 # ── Database & logging ────────────────────────────────────────────────────────
 MONGO_DB_URI = getenv("MONGO_DB_URI")
