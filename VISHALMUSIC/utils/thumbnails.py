@@ -65,43 +65,83 @@ def trim_to_width(text: str, font: ImageFont.FreeTypeFont, max_w: int) -> str:
 
 
 async def get_random_anime_background() -> str:
-    """Download a random anime background from wallpapercave"""
-    bg_cache_path = os.path.join(CACHE_DIR, "temp_anime_bg.png")
+    """Download a random anime background from wallpapercave - HAR BAAR DIFFERENT"""
+    
+    # Different cache for each request - no reuse
+    import time
+    timestamp = int(time.time() * 1000)
+    bg_cache_path = os.path.join(CACHE_DIR, f"temp_anime_bg_{timestamp}_{random.randint(1, 9999)}.png")
     
     try:
         async with aiohttp.ClientSession() as session:
             # Headers to avoid blocking
             headers = {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+                'Accept-Language': 'en-US,en;q=0.5',
             }
             
-            # Get the wallpaper page
-            async with session.get("https://wallpapercave.com/anime-girl-laptop-wallpapers", headers=headers) as resp:
-                if resp.status != 200:
-                    raise Exception("Failed to fetch page")
-                html = await resp.text()
+            # Multiple pages se images lenge for more variety
+            pages = [
+                "https://wallpapercave.com/anime-girl-laptop-wallpapers",
+                "https://wallpapercave.com/anime-girl-wallpapers",
+                "https://wallpapercave.com/anime-aesthetic-laptop-wallpapers",
+                "https://wallpapercave.com/cute-anime-girl-wallpapers",
+                "https://wallpapercave.com/anime-art-wallpapers"
+            ]
             
-            # Extract all image URLs from the page
-            # Pattern for wallpapercave image URLs
-            image_urls = re.findall(r'https://wallpapercave\.com/(?:uwp|wp)/[^"\']+\.(?:jpg|png|webp|jpeg)', html, re.IGNORECASE)
+            all_image_urls = []
             
-            # Also try alternative pattern
-            if not image_urls:
-                image_urls = re.findall(r'https://wallpapercave\.com/download/[^"\']+', html)
-                # Convert download links to direct image links
-                image_urls = [url.replace('/download/', '/wp/') + '.jpg' for url in image_urls]
+            # Try multiple pages
+            for page_url in random.sample(pages, min(3, len(pages))):
+                try:
+                    async with session.get(page_url, headers=headers, timeout=10) as resp:
+                        if resp.status == 200:
+                            html = await resp.text()
+                            
+                            # Different patterns to extract images
+                            patterns = [
+                                r'https://wallpapercave\.com/(?:uwp|wp)/[^"\']+\.(?:jpg|png|webp|jpeg)',
+                                r'https://wallpapercave\.com/download/[^"\']+',
+                                r'data-src="([^"]+\.(?:jpg|png|webp))"',
+                                r'<img[^>]+src="([^"]+\.(?:jpg|png|webp))"'
+                            ]
+                            
+                            for pattern in patterns:
+                                urls = re.findall(pattern, html, re.IGNORECASE)
+                                # Convert download links to direct image links
+                                urls = [url.replace('/download/', '/wp/') + '.jpg' if '/download/' in url else url for url in urls]
+                                all_image_urls.extend(urls)
+                                
+                except Exception as e:
+                    print(f"Error fetching {page_url}: {e}")
+                    continue
             
-            # Filter for high quality wallpapers
-            image_urls = [url for url in image_urls if 'thumb' not in url.lower()]
+            # Remove duplicates
+            all_image_urls = list(set(all_image_urls))
             
-            if not image_urls:
+            # Filter for good quality images
+            all_image_urls = [url for url in all_image_urls if 'thumb' not in url.lower() and 'thumbnail' not in url.lower()]
+            
+            # Also try direct API or different source if no images found
+            if not all_image_urls:
+                # Alternative: Use picsum or other free image API
+                fallback_urls = [
+                    f"https://picsum.photos/1280/720?random={random.randint(1, 10000)}",
+                    f"https://source.unsplash.com/1280x720/?anime,girl&{random.randint(1, 10000)}",
+                ]
+                all_image_urls = fallback_urls
+            
+            if not all_image_urls:
                 raise Exception("No image URLs found")
             
             # Pick a random wallpaper
-            bg_url = random.choice(image_urls)
+            bg_url = random.choice(all_image_urls)
+            
+            print(f"Downloading random background from: {bg_url[:100]}...")
             
             # Download the wallpaper
-            async with session.get(bg_url, headers=headers) as img_resp:
+            async with session.get(bg_url, headers=headers, timeout=15) as img_resp:
                 if img_resp.status == 200:
                     async with aiofiles.open(bg_cache_path, "wb") as f:
                         await f.write(await img_resp.read())
@@ -111,7 +151,32 @@ async def get_random_anime_background() -> str:
                     
     except Exception as e:
         print(f"Error downloading anime background: {e}")
-        return None
+        # Create a vibrant gradient background as fallback
+        return await create_vibrant_gradient_background()
+
+
+async def create_vibrant_gradient_background() -> str:
+    """Create a vibrant gradient background if image download fails"""
+    import time
+    timestamp = int(time.time() * 1000)
+    bg_path = os.path.join(CACHE_DIR, f"gradient_bg_{timestamp}.png")
+    
+    # Create vibrant gradient image
+    img = Image.new('RGB', (1280, 720))
+    draw = ImageDraw.Draw(img)
+    
+    # Random vibrant colors
+    color1 = random.choice(ACCENTS)
+    color2 = random.choice(ACCENTS)
+    
+    for y in range(720):
+        r = int(color1[0] * (1 - y/720) + color2[0] * (y/720))
+        g = int(color1[1] * (1 - y/720) + color2[1] * (y/720))
+        b = int(color1[2] * (1 - y/720) + color2[2] * (y/720))
+        draw.line([(0, y), (1280, y)], fill=(r, g, b))
+    
+    img.save(bg_path)
+    return bg_path
 
 
 async def get_thumb(videoid: str) -> str:
@@ -135,7 +200,7 @@ async def get_thumb(videoid: str) -> str:
     duration_text = "Live" if is_live else duration or "Unknown Mins"
 
     # Download YouTube thumbnail (for video preview)
-    thumb_path = os.path.join(CACHE_DIR, f"thumb{videoid}.png")
+    thumb_path = os.path.join(CACHE_DIR, f"thumb{videoid}_{random.randint(1,9999)}.png")
     try:
         async with aiohttp.ClientSession() as session:
             async with session.get(thumbnail) as resp:
@@ -145,7 +210,7 @@ async def get_thumb(videoid: str) -> str:
     except Exception:
         thumb_path = None
 
-    # Get random anime background
+    # Get random anime background (HAR BAAR DIFFERENT)
     background_path = await get_random_anime_background()
     
     # Random accent color
@@ -156,18 +221,22 @@ async def get_thumb(videoid: str) -> str:
         try:
             # Use anime background
             base = Image.open(background_path).resize((1280, 720)).convert("RGBA")
-            # Apply blur for better text readability
-            base = base.filter(ImageFilter.GaussianBlur(radius=8))
-            # Add dark overlay
-            overlay_dark = Image.new("RGBA", base.size, (0, 0, 0, 120))
-            base = Image.alpha_composite(base, overlay_dark)
-            # Slight vignette effect
-            vignette = Image.new("RGBA", base.size, (0, 0, 0, 0))
-            draw_v = ImageDraw.Draw(vignette)
-            for i in range(200):
-                alpha = int(30 * (1 - i/200))
-                draw_v.ellipse([i, i, 1280-i, 720-i], outline=(0,0,0,0), fill=(0,0,0,alpha))
-            base = Image.alpha_composite(base, vignette)
+            
+            # Less blur and MORE BRIGHTNESS
+            base = base.filter(ImageFilter.GaussianBlur(radius=3))  # Less blur (was 8)
+            
+            # Light overlay instead of dark (for more brightness)
+            brightness_enhancer = ImageEnhance.Brightness(base)
+            base = brightness_enhancer.enhance(1.3)  # Increase brightness by 30%
+            
+            # Add light overlay instead of dark
+            overlay_light = Image.new("RGBA", base.size, (255, 255, 255, 50))  # Light white overlay
+            base = Image.alpha_composite(base, overlay_light)
+            
+            # Contrast enhancement
+            contrast_enhancer = ImageEnhance.Contrast(base)
+            base = contrast_enhancer.enhance(1.1)
+            
         except Exception as e:
             print(f"Error processing background: {e}")
             # Fallback to gradient
@@ -178,7 +247,7 @@ async def get_thumb(videoid: str) -> str:
                 color = (int(r * (y / 720)), int(g * (1 - y / 720)), int(b * (0.5 + y / 1440)), 255)
                 ImageDraw.Draw(gradient).line([(0, y), (1280, y)], fill=color)
             base = Image.alpha_composite(base, gradient)
-            base = ImageEnhance.Brightness(base.filter(ImageFilter.BoxBlur(10))).enhance(0.7)
+            base = ImageEnhance.Brightness(base.filter(ImageFilter.BoxBlur(10))).enhance(0.9)
     else:
         # Fallback to gradient background
         base = Image.new("RGBA", (1280, 720), (30, 30, 40, 255))
@@ -188,11 +257,11 @@ async def get_thumb(videoid: str) -> str:
             color = (int(r * (y / 720)), int(g * (1 - y / 720)), int(b * (0.5 + y / 1440)), 255)
             ImageDraw.Draw(gradient).line([(0, y), (1280, y)], fill=color)
         base = Image.alpha_composite(base, gradient)
-        base = ImageEnhance.Brightness(base.filter(ImageFilter.BoxBlur(10))).enhance(0.7)
+        base = ImageEnhance.Brightness(base.filter(ImageFilter.BoxBlur(10))).enhance(0.9)
 
-    # Frosted glass panel
+    # Frosted glass panel (slightly more transparent for brightness)
     panel_area = base.crop((PANEL_X, PANEL_Y, PANEL_X + PANEL_W, PANEL_Y + PANEL_H))
-    overlay = Image.new("RGBA", (PANEL_W, PANEL_H), (255, 255, 255, TRANSPARENCY))
+    overlay = Image.new("RGBA", (PANEL_W, PANEL_H), (255, 255, 255, TRANSPARENCY - 50))  # More transparent
     frosted = Image.alpha_composite(panel_area, overlay)
     mask = Image.new("L", (PANEL_W, PANEL_H), 0)
     ImageDraw.Draw(mask).rounded_rectangle((0, 0, PANEL_W, PANEL_H), 50, fill=255)
@@ -220,13 +289,13 @@ async def get_thumb(videoid: str) -> str:
     # Neon title text with shadow
     title_text = trim_to_width(title, title_font, MAX_TITLE_WIDTH)
     shadow_pos = (TITLE_X + 2, TITLE_Y + 2)
-    draw.text(shadow_pos, title_text, font=title_font, fill=(0, 0, 0, 160))
+    draw.text(shadow_pos, title_text, font=title_font, fill=(0, 0, 0, 100))
     draw.text((TITLE_X, TITLE_Y), title_text, font=title_font, fill=accent)
-    draw.text((META_X, META_Y), f"YouTube | {views}", fill=(200, 200, 200), font=regular_font)
+    draw.text((META_X, META_Y), f"YouTube | {views}", fill=(50, 50, 50), font=regular_font)
 
     # Stylish progress bar
     bar_y = BAR_Y
-    draw.line([(BAR_X, bar_y), (BAR_X + BAR_TOTAL_LEN, bar_y)], fill=(50, 50, 50), width=8)
+    draw.line([(BAR_X, bar_y), (BAR_X + BAR_TOTAL_LEN, bar_y)], fill=(100, 100, 100), width=8)
     draw.line([(BAR_X, bar_y), (BAR_X + BAR_RED_LEN, bar_y)], fill=accent, width=8)
 
     # Heart symbol above progress
@@ -236,12 +305,12 @@ async def get_thumb(videoid: str) -> str:
     draw.text((heart_x, heart_y), heart_symbol, fill=accent, font=heart_font)
 
     # Time labels
-    draw.text((BAR_X, bar_y + 18), "00:00", fill=(200, 200, 200), font=regular_font)
+    draw.text((BAR_X, bar_y + 18), "00:00", fill=(80, 80, 80), font=regular_font)
     end_text = "LIVE" if is_live else duration_text
     end_text_width = regular_font.getlength(end_text)
     draw.text((BAR_X + BAR_TOTAL_LEN - end_text_width, bar_y + 18), end_text, fill=accent, font=regular_font)
 
-    # Icons (Fixed transparency issue)
+    # Icons
     icons_path = "VISHALMUSIC/assets/thumb/play_icons.png"
     if os.path.isfile(icons_path):
         try:
