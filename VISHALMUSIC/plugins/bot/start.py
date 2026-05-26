@@ -149,16 +149,16 @@ async def start_pm(client, message: Message, _):
             # Welcome animation
             welcome_msgs = [
                 "𝐖𝐞𝐥𝐜𝐨𝐦𝐞 𝐁𝐚𝐛𝐲 ꨄ︎ {}.. ❣️",
-                "𝐖𝐞𝐥𝐜𝐨𝐦𝐞 𝐁𝐚𝐛𝐲 ꨄ {}.. 🥳",
-                "𝐖𝐞𝐥𝐜𝐨𝐦𝐞 𝐁𝐚𝐛𝐲 ꨄ {}.. 💥",
-                "𝐖𝐞𝐥𝐜𝐨𝐦𝐞 𝐁𝐚𝐛𝐲 ꨄ {}.. 🤩",
-                "𝐖𝐞𝐥𝐜𝐨𝐦𝐞 𝐁𝐚𝐛𝐲 ꨄ {}.. 💌",
-                "𝐖𝐞𝐥𝐜𝐨𝐦𝐞 𝐁𝐚𝐛𝐲 ꨄ {}.. 💞",
+                "𝐖𝐞𝐥𝐜𝐨𝐦𝐞 𝐁𝐚𝐛𝐲 ꨄ {}..... 🥳",
+                "𝐖𝐞𝐥𝐜𝐨𝐦𝐞 𝐁𝐚𝐛𝐲 ꨄ {}........ 💥",
+                "𝐖𝐞𝐥𝐜𝐨𝐦𝐞 𝐁𝐚𝐛𝐲 ꨄ {}.......... 🤩",
+                "𝐖𝐞𝐥𝐜𝐨𝐦𝐞 𝐁𝐚𝐛𝐲 ꨄ {}........... 💌",
+                "𝐖𝐞𝐥𝐜𝐨𝐦𝐞 𝐁𝐚𝐛𝐲 ꨄ {}............. 💞",
             ]
             
             lol = await message.reply_text(welcome_msgs[0].format(message.from_user.mention))
             for msg in welcome_msgs[1:]:
-                await asyncio.sleep(0.5)
+                await asyncio.sleep(0.3)
                 await lol.edit_text(msg.format(message.from_user.mention))
             await lol.delete()
             
@@ -173,14 +173,14 @@ async def start_pm(client, message: Message, _):
                 "**⚡ѕтαятιи**",
                 "**⚡ѕтαятιиg**",
                 "**⚡ѕтαятιиg.**",
-                "**⚡ѕтαятιиg....**",
-                "**⚡ѕтαятιиg.**",
-                "**⚡ѕтαятιиg....**",
+                "**⚡ѕтαятιиg.....",
+                "**⚡ѕтαятιиg.........",
+                "**⚡ѕтαятιиg.............",
             ]
             
             lols = await message.reply_text(start_msgs[0])
             for msg in start_msgs[1:]:
-                await asyncio.sleep(0.3)
+                await asyncio.sleep(0.2)
                 await lols.edit_text(msg)
             await lols.delete()
             
