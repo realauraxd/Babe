@@ -64,12 +64,12 @@ GOOD_NIGHT_LINES = [
 # =========================================================
 
 GOODNIGHT_RE = re.compile(
-    r"\b(good\s*night|goodnight|gn|nighty|nite)\b",
+    r"^(good\s*night|goodnight|gn|nighty|nite)$",  # Changed to match exact message
     re.IGNORECASE
 )
 
 GOODMORNING_RE = re.compile(
-    r"\b(good\s*morning|goodmorning|gm|morning|subah)\b",
+    r"^(good\s*morning|goodmorning|gm|morning|subah)$",  # Changed to match exact message
     re.IGNORECASE
 )
 
@@ -84,7 +84,7 @@ def is_good_night(dt_local):
     return dt_local.hour >= 20 or dt_local.hour < 4
 
 # =========================================================
-# FONT
+# FONT & IMAGE FUNCTIONS
 # =========================================================
 
 def load_font(size):
@@ -94,10 +94,6 @@ def load_font(size):
     except Exception:
         pass
     return ImageFont.load_default()
-
-# =========================================================
-# RANDOM NATURE BACKGROUND
-# =========================================================
 
 def create_random_nature_background(width, height):
     themes = [
@@ -133,10 +129,6 @@ def create_random_nature_background(width, height):
 
     img = img.filter(ImageFilter.GaussianBlur(18))
     return img
-
-# =========================================================
-# IMAGE GENERATOR
-# =========================================================
 
 def generate_thumbnail(lines, username=""):
     width = 1280
@@ -184,10 +176,6 @@ def generate_thumbnail(lines, username=""):
     out.seek(0)
     return out.read()
 
-# =========================================================
-# SEND PHOTO
-# =========================================================
-
 async def make_and_send_thumbnail(message, lines, caption):
     try:
         uname = "User"
@@ -207,29 +195,46 @@ async def make_and_send_thumbnail(message, lines, caption):
         await message.reply_text(f"⚠️ Error:\n{e}")
 
 # =========================================================
-# MAIN HANDLER - FIXED: Will NOT block other commands
+# ⭐ MAIN GREETING HANDLER - FIXED: Will NOT block other commands
 # =========================================================
 
-@app.on_message(filters.text & ~filters.command(["goodmorning", "goodnight"]))
+@app.on_message(
+    filters.text & 
+    ~filters.command(["goodmorning", "goodnight"]) &  # Exclude commands
+    filters.group  # Only in groups
+)
 async def greet_detector_handler(client, message: Message):
-    # IMPORTANT: Skip ALL command messages
-    if message.text and message.text.startswith('/'):
-        return
-    
-    # Skip if no text
+    # CRITICAL: Skip all command messages immediately
     if not message.text:
         return
     
-    text = message.text
-
-    # Check if it's a greeting
-    is_gn = bool(GOODNIGHT_RE.search(text))
-    is_gm = bool(GOODMORNING_RE.search(text))
-    
-    # If not a greeting, exit immediately (don't block)
-    if not is_gn and not is_gm:
+    # Skip if message starts with / (any command)
+    if message.text.startswith('/'):
         return
-
+    
+    # Get clean text (remove @username if present)
+    text = message.text.strip()
+    
+    # Remove bot mention if exists (e.g., @botname gm)
+    if ' ' in text:
+        parts = text.split()
+        # Check if first part is a bot mention
+        if parts[0].startswith('@'):
+            text = ' '.join(parts[1:]) if len(parts) > 1 else ''
+    
+    # Check if it's exactly a greeting (no extra words)
+    is_gm = bool(GOODMORNING_RE.match(text))
+    is_gn = bool(GOODNIGHT_RE.match(text))
+    
+    # If not a pure greeting, exit immediately
+    if not is_gm and not is_gn:
+        return
+    
+    # Don't reply to bots
+    if message.from_user and message.from_user.is_bot:
+        return
+    
+    # Check time
     try:
         msg_dt = message.date
         if msg_dt.tzinfo is None:
@@ -237,38 +242,35 @@ async def greet_detector_handler(client, message: Message):
         local_dt = msg_dt.astimezone(ZoneInfo(TIMEZONE))
     except Exception:
         local_dt = datetime.datetime.now(ZoneInfo(TIMEZONE))
-
+    
+    # Prepare user info
     uname = "User"
     uid = None
-
     if message.from_user:
         uid = message.from_user.id
         uname = message.from_user.first_name or "User"
-
+    
     if uid:
         display_html = f"<a href='tg://user?id={uid}'>{html.escape(uname)}</a>"
     else:
         display_html = html.escape(uname)
-
-    # GOOD MORNING
-    if is_gm:
-        if is_good_morning(local_dt) or ALLOW_OUT_OF_TIME_REPLY:
-            lines = random.choice(GOOD_MORNING_LINES)
-            caption = f"{lines[0]}\n\n❍ 𐙚 ꒷꒦ ๋{display_html} ☕\n\n{lines[1]}"
-            await make_and_send_thumbnail(message, lines, caption)
-
-    # GOOD NIGHT
-    elif is_gn:
-        if is_good_night(local_dt) or ALLOW_OUT_OF_TIME_REPLY:
-            lines = random.choice(GOOD_NIGHT_LINES)
-            caption = f"{lines[0]}\n\n❍ 𐙚 ꒷꒦ ๋{display_html} 🌙\n\n{lines[1]}"
-            await make_and_send_thumbnail(message, lines, caption)
+    
+    # Send greeting
+    if is_gm and (is_good_morning(local_dt) or ALLOW_OUT_OF_TIME_REPLY):
+        lines = random.choice(GOOD_MORNING_LINES)
+        caption = f"{lines[0]}\n\n❍ 𐙚 ꒷꒦ ๋{display_html} ☕\n\n{lines[1]}"
+        await make_and_send_thumbnail(message, lines, caption)
+    
+    elif is_gn and (is_good_night(local_dt) or ALLOW_OUT_OF_TIME_REPLY):
+        lines = random.choice(GOOD_NIGHT_LINES)
+        caption = f"{lines[0]}\n\n❍ 𐙚 ꒷꒦ ๋{display_html} 🌙\n\n{lines[1]}"
+        await make_and_send_thumbnail(message, lines, caption)
 
 # =========================================================
-# COMMANDS - These will work properly now
+# COMMANDS
 # =========================================================
 
-@app.on_message(filters.command("goodmorning"))
+@app.on_message(filters.command("goodmorning") & filters.group)
 async def cmd_gm(client, message: Message):
     lines = random.choice(GOOD_MORNING_LINES)
     uid = message.from_user.id
@@ -277,7 +279,7 @@ async def cmd_gm(client, message: Message):
     caption = f"{lines[0]}\n\n{display_html}\n\n{lines[1]}"
     await make_and_send_thumbnail(message, lines, caption)
 
-@app.on_message(filters.command("goodnight"))
+@app.on_message(filters.command("goodnight") & filters.group)
 async def cmd_gn(client, message: Message):
     lines = random.choice(GOOD_NIGHT_LINES)
     uid = message.from_user.id
