@@ -384,60 +384,109 @@ async def get_best_song(chat_id, queries, last_title, last_vidid, artist, movie,
     for q in queries:
         try:
             details, vidid = await yt.track(q)
+
             if not vidid:
                 continue
 
-            # FIX 1: Hard-skip the exact same video that just played
+            # Skip exact same video
             if vidid == last_vidid:
                 continue
 
             title = details.get("title", "").lower()
             duration = details.get("duration_min", "0:00") or "0:00"
 
+            # Skip unwanted versions
             bad_words = [
-                "slowed", "reverb", "8d", "lofi", "live", "mix", "dj remix",
-                "bass boosted", "cover", "karaoke", "instrumental", "sped up",
+                "slowed",
+                "reverb",
+                "8d",
+                "lofi",
+                "live",
+                "mix",
+                "dj remix",
+                "bass boosted",
+                "cover",
+                "karaoke",
+                "instrumental",
+                "sped up",
             ]
+
             if any(x in title for x in bad_words):
                 continue
 
+            # Skip same title
             if title.strip() == last_title.lower().strip():
                 continue
 
+            # ━━━━━━━━━━━━━━━━━━━━━━━
+            # DURATION FILTER
+            # Only allow songs:
+            # 2 min <= song < 10 min
+            # ━━━━━━━━━━━━━━━━━━━━━━━
             try:
-                mins = int(duration.split(":")[0])
-                if mins < 2 or mins > 10:
+                parts = duration.split(":")
+
+                # hh:mm:ss
+                if len(parts) == 3:
+                    hours, mins, secs = map(int, parts)
+                    total_seconds = hours * 3600 + mins * 60 + secs
+
+                # mm:ss
+                elif len(parts) == 2:
+                    mins, secs = map(int, parts)
+                    total_seconds = mins * 60 + secs
+
+                else:
                     continue
+
+                # Less than minutes
+                if total_seconds < 60:
+                    continue
+
+                # 10 minutes or more
+                if total_seconds >= 600:
+                    continue
+
             except Exception:
-                pass
+                continue
 
             score = 0
 
-            match_count = sum(1 for w in original_words[:5] if w in title and len(w) > 3)
+            # Word match score
+            match_count = sum(
+                1 for w in original_words[:5]
+                if w in title and len(w) > 3
+            )
             score += match_count * 15
 
+            # Artist score
             if artist and artist.lower() in title:
                 score += 50
+
                 if title.startswith(artist.lower()):
                     score += 30
 
+            # Movie score
             if movie and movie.lower() in title:
                 score += 45
 
+            # Language score
             if any(x in title for x in LANG_DB.get(lang, [])):
                 score += 20
 
+            # Mood score
             if mood != "normal":
                 mood_keywords = MOOD_DB.get(mood, [])
+
                 if any(x in title for x in mood_keywords):
                     score += 15
 
-            # FIX 1: Hard-skip recently played songs (not just penalise)
-            # Also pass title so same song from different channels is caught
+            # Repeat protection
             if await is_repeat(chat_id, vidid, details.get("title", "")):
                 continue
 
-            score += 50  # bonus for not being a repeat (always true now)
+            # Fresh song bonus
+            score += 50
 
             candidates.append((score, vidid, details))
 
@@ -446,6 +495,7 @@ async def get_best_song(chat_id, queries, last_title, last_vidid, artist, movie,
 
         await asyncio.sleep(0.2)
 
+    # Highest score first
     candidates.sort(key=lambda x: x[0], reverse=True)
 
     if candidates:
